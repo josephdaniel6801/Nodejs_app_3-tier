@@ -1,24 +1,15 @@
-FROM node:24 as BUILDER
-
+FROM node:20-alpine AS BUILD
 WORKDIR /app
-
+COPY package*.json ./
+RUN npm ci
 COPY . .
-
-RUN npm install
-
 RUN npm run build
 
-FROM node:24-alpine as RUNNER
-
+# Stage 2 — small image that only serves the build (no nginx)
+FROM node:20-alpine as RUNNER
 WORKDIR /app
-
-COPY package.json .
-
-RUN npm install -g vite
-
-COPY --from=BUILDER /app/dist ./dist
-
+RUN npm install -g vite@5 && npm cache clean --force
+COPY --from=build /app/dist ./dist
+COPY vite.preview.config.js ./vite.config.js
 EXPOSE 4173
-
 CMD ["vite", "preview", "--host", "0.0.0.0", "--port", "4173"]
-
